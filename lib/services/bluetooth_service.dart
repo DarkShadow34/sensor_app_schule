@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 class BluetoothService {
-  final FlutterBluePlus _flutterBlue = FlutterBluePlus();
   final StreamController<List<BluetoothDevice>> _devicesController = StreamController<List<BluetoothDevice>>.broadcast();
   final StreamController<String> _liveDataController = StreamController<String>.broadcast();
 
@@ -12,7 +11,7 @@ class BluetoothService {
   Stream<List<BluetoothDevice>> get devicesStream => _devicesController.stream;
   Stream<String> get liveDataStream => _liveDataController.stream;
 
-  void scanForDevices() {
+  Future<void> scanForDevices() async {
     FlutterBluePlus.scanResults.listen((results) {
       for (ScanResult scanResult in results) {
         if (!_devicesList.any((device) => device.remoteId == scanResult.device.remoteId)) {
@@ -21,8 +20,10 @@ class BluetoothService {
         }
       }
     });
-    FlutterBluePlus.startScan();
+
+    await FlutterBluePlus.startScan(); // Use await to convert it to a Future.
   }
+
 
   Future<void> connectToDevice(BluetoothDevice device) async {
     connectedDevice = device;

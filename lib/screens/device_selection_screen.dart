@@ -12,11 +12,22 @@ class DeviceSelectionScreen extends StatefulWidget {
 
 class _DeviceSelectionScreenState extends State<DeviceSelectionScreen> {
   BluetoothService bluetoothService = BluetoothService();
+  String? errorMessage;
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    bluetoothService.scanForDevices();
+    bluetoothService.scanForDevices().whenComplete(() {
+      setState(() {
+        isLoading = false;
+      });
+    }).catchError((error) {
+      setState(() {
+        isLoading = false;
+        errorMessage = 'Error scanning devices: $error';
+      });
+    });
   }
 
   @override
@@ -27,46 +38,48 @@ class _DeviceSelectionScreenState extends State<DeviceSelectionScreen> {
       ),
       body: Column(
         children: [
-          Expanded(
-            child: StreamBuilder<List<blueplus.BluetoothDevice>>(
-              stream: bluetoothService.devicesStream,
-              builder: (context, snapshot) {
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return Center(child: Text('No devices found'));
-                }
-                return ListView.builder(
-                  itemCount: snapshot.data!.length,
-                  itemBuilder: (context, index) {
-                    blueplus.BluetoothDevice device = snapshot.data![index];
-                    return ListTile(
-                      title: Text(device.platformName.isEmpty ? 'Unknown Device' : device.platformName),
-                      subtitle: Text(device.remoteId.toString()),
-                      onTap: () => bluetoothService.connectToDevice(device),
-                    );
-                  },
-                );
-              },
+          if (isLoading)
+            Center(
+              child: CircularProgressIndicator(),
             ),
-          ),
-          StreamBuilder<String>(
-            stream: bluetoothService.liveDataStream,
-            builder: (context, snapshot) {
-              if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-                return Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Column(
-                    children: [
-                      Text('Connected to: ${bluetoothService.connectedDevice?.platformName ?? 'Unknown'}'),
-                      SizedBox(height: 10),
-                      Text('Live Data: ${snapshot.data!}'),
-                    ],
-                  ),
-                );
-              } else {
-                return SizedBox();
-              }
-            },
-          ),
+          if (!isLoading && errorMessage != null)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                errorMessage!,
+                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+              ),
+            ),
+          if (!isLoading)
+            Expanded(
+              child: StreamBuilder<List<blueplus.BluetoothDevice>>(
+                stream: bluetoothService.devicesStream,
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return Center(child: Text('No devices found'));
+                  }
+                  return ListView.builder(
+                    itemCount: snapshot.data!.length,
+                    itemBuilder: (context, index) {
+                      blueplus.BluetoothDevice device = snapshot.data![index];
+                      return ListTile(
+                        leading: Icon(Icons.bluetooth, color: Colors.blue),
+                        title: Text(device.platformName.isEmpty ? 'Unknown Device' : device.platformName),
+                        subtitle: Text(device.remoteId.toString()),
+                        trailing: Icon(Icons.chevron_right),
+                        onTap: () {
+                          bluetoothService.connectToDevice(device).catchError((error) {
+                            setState(() {
+                              errorMessage = 'Error connecting to device: $error';
+                            });
+                          });
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
         ],
       ),
     );

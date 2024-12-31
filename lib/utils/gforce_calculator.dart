@@ -1,6 +1,9 @@
-// lib/utils/gforce_calculator.dart
-double calculateGForce(double accelX, double accelY, double accelZ) {
-  const double gravity = 9.8; // Earth's gravity in m/s²
-  return (accelX.abs() + accelY.abs() + accelZ.abs()) / gravity;
+class GForceCalculator {
+  static String calculateGForce(String sensorData) {
+    // Assuming the sensor data is a numeric string.
+    double value = double.tryParse(sensorData) ?? 0;
+    double gForce = value / 9.8; // Using Earth's gravity for normalization.
+    return gForce.toStringAsFixed(2);
+  }
 }
 
