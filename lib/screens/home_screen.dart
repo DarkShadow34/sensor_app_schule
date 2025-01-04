@@ -18,6 +18,12 @@ class _HomeScreenState extends State<HomeScreen> {
   String lapTime = '00:00:00';
   Stopwatch stopwatch = Stopwatch();
 
+  void updateSpeed(double newSpeed) {
+    setState(() {
+      speed = newSpeed;
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -66,14 +72,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 'Menu',
                 style: TextStyle(color: Colors.white, fontSize: 24),
               ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.bluetooth),
-              title: const Text('Device Selection'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/device_selection');
-              },
             ),
             ListTile(
               leading: const Icon(Icons.history),

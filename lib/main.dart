@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'theme_notifier.dart';
 import 'screens/home_screen.dart';
-import 'screens/device_selection_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/settings_screen.dart';
 
@@ -36,7 +35,6 @@ class _SensorAppState extends State<SensorApp> {
         initialRoute: '/',
         routes: {
           '/': (context) => const HomeScreen(),
-          '/device_selection': (context) => const DeviceSelectionScreen(),
           '/history': (context) => const HistoryScreen(),
           '/settings': (context) => const SettingsScreen(),
         },
