@@ -1,5 +1,5 @@
-import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:sqflite/sqflite.dart';
 
 class DatabaseService {
   static Database? _database;
@@ -34,6 +34,7 @@ class DatabaseService {
     required double gForce,
     required String lapTime,
   }) async {
+    print('Saving data: speed=$speed, gForce=$gForce, lapTime=$lapTime');
     await _database?.insert('sensor_data', {
       'speed': speed,
       'gForce': gForce,
@@ -44,6 +45,8 @@ class DatabaseService {
 
   // Retrieve all data
   static Future<List<Map<String, dynamic>>> getAllData() async {
-    return await _database?.query('sensor_data', orderBy: 'timestamp DESC') ?? [];
+    final data = await _database?.query('sensor_data', orderBy: 'timestamp DESC') ?? [];
+    print('Retrieved data: $data');
+    return data;
   }
 }

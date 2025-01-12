@@ -1,54 +1,100 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/bluetooth_service.dart';
 import '../services/database_service.dart';
 import '../utils/gforce_calculator.dart';
+import 'bluetooth_device_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, required this.bluetoothService});
+
+  final CustomBluetoothService bluetoothService;
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final BluetoothService bluetoothService = BluetoothService();
   double speed = 0.0;
   double gForce = 0.0;
   int lapCount = 0;
   String lapTime = '00:00:00';
   Stopwatch stopwatch = Stopwatch();
-
-  void updateSpeed(double newSpeed) {
-    setState(() {
-      speed = newSpeed;
-    });
-  }
+  late Timer timer;
+  late Timer lapTimer;
+  bool isRoundStopped = false;
 
   @override
   void initState() {
     super.initState();
     DatabaseService.initializeDatabase();
-    bluetoothService.liveDataStream.listen((data) {
+    widget.bluetoothService.liveDataStream.listen((data) {
+      if (!isRoundStopped) {
+        setState(() {
+          lapTime = data;
+        });
+      }
+    });
+    widget.bluetoothService.speedStream.listen((newSpeed) {
       setState(() {
-        speed = double.tryParse(data) ?? 0.0;
-        gForce = GForceCalculator.calculateGForce(speed as String) as double;
+        speed = newSpeed;
+        gForce = GForceCalculator.calculateGForce(speed.toString()) as double;
       });
     });
+    widget.bluetoothService.startListeningToConnectedDevices();
   }
 
-  void detectLap() {
+  void startRound() {
     setState(() {
-      lapCount++;
-      lapTime = stopwatch.elapsed.toString().split('.').first;
+      lapCount = 0; // Reset lap count
+      lapTime = '00:00:00';
       stopwatch.reset();
       stopwatch.start();
+      isRoundStopped = false;
+      timer = Timer.periodic(Duration(seconds: 1), (timer) {
+        setState(() {
+          final elapsed = stopwatch.elapsed;
+          final hours = elapsed.inHours.toString().padLeft(2, '0');
+          final minutes = (elapsed.inMinutes % 60).toString().padLeft(2, '0');
+          final seconds = (elapsed.inSeconds % 60).toString().padLeft(2, '0');
+          lapTime = '$hours:$minutes:$seconds';
+        });
+      });
+      lapTimer = Timer.periodic(Duration(minutes: 5), (lapTimer) {
+        setState(() {
+          lapCount++;
+        });
+      });
     });
+    widget.bluetoothService.startRound();
+  }
 
+  void stopRound() {
+    setState(() {
+      stopwatch.stop();
+      timer.cancel();
+      lapTimer.cancel();
+      final elapsed = stopwatch.elapsed;
+      final hours = elapsed.inHours.toString().padLeft(2, '0');
+      final minutes = (elapsed.inMinutes % 60).toString().padLeft(2, '0');
+      final seconds = (elapsed.inSeconds % 60).toString().padLeft(2, '0');
+      lapTime = '$hours:$minutes:$seconds';
+      isRoundStopped = true;
+      print('StopRound - Elapsed: $elapsed, Hours: $hours, Minutes: $minutes, Seconds: $seconds, LapTime: $lapTime');
+    });
+    widget.bluetoothService.stopRound();
     DatabaseService.saveData(
       speed: speed,
       gForce: gForce,
       lapTime: lapTime,
     );
+  }
+
+  @override
+  void dispose() {
+    timer.cancel();
+    lapTimer.cancel();
+    super.dispose();
   }
 
   @override
@@ -79,6 +125,17 @@ class _HomeScreenState extends State<HomeScreen> {
               onTap: () {
                 Navigator.pop(context);
                 Navigator.pushNamed(context, '/history');
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.bluetooth),
+              title: const Text('Bluetooth Devices'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => BluetoothDeviceScreen()),
+                );
               },
             ),
           ],
@@ -121,9 +178,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
-            ElevatedButton(
-              onPressed: detectLap,
-              child: const Text('Simulate Lap Detection'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                ElevatedButton(
+                  onPressed: startRound,
+                  child: const Text('Start Round'),
+                ),
+                ElevatedButton(
+                  onPressed: stopRound,
+                  child: const Text('Stop Round'),
+                ),
+              ],
             ),
           ],
         ),
